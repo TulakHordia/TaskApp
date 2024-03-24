@@ -33,7 +33,9 @@ fun TaskDialog(
                 Button(
                     onClick = {
                         onConfirm(taskText.text)
-                        onDismiss()
+                        taskText = TextFieldValue() //Clearing the text
+                        onDismiss() //Closes the dialog
+
                     }
                 ) {
                     Text(text = "Add")

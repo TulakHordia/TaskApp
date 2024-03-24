@@ -1,8 +1,12 @@
 package com.example.tasksapp
 
-import android.graphics.fonts.FontStyle
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -12,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavHostController
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tasksapp.ui.theme.TasksAppTheme
 
-data class Task(val text: String, var completed: Boolean = false)
+data class Task(val text: String, val completed: MutableState<Boolean> = mutableStateOf(false))
 private fun Button.setOnClickListener(onClick: () -> Unit   , modifier: Modifier) {
 
 }
@@ -117,10 +122,14 @@ fun AppNavigation() {
     }
 }
 
+@SuppressLint("QueryPermissionsNeeded")
 @Composable
 fun TasksMainPage(navController: NavHostController) {
-    var showDialog by remember { mutableStateOf(false) }
+    var showDialogBox by remember { mutableStateOf(false) }
+    var completeDialogBox by remember { mutableStateOf(false) }
     var tasks by remember { mutableStateOf(emptyList<Task>()) }
+    val context = LocalContext.current
+    var completedTaskText by remember { mutableStateOf("") }
 
     Surface(
         color = MaterialTheme.colorScheme.background,
@@ -146,13 +155,26 @@ fun TasksMainPage(navController: NavHostController) {
                     tasks.forEach { task ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(
-                                checked = task.completed,
+                                checked = task.completed.value,
                                 onCheckedChange = { isChecked ->
-                                    task.completed = isChecked
+                                    if (isChecked) {
+                                        completedTaskText = task.text
+                                        task.completed.value = isChecked
+                                        completeDialogBox = true
+                                    }
                                 }
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = task.text)
+                            Text(
+                                text = if (task.completed.value) "✅" else "❌",
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = task.text,
+                                fontSize = 20.sp
+                            )
+
                         }
                     }
                 }
@@ -164,19 +186,55 @@ fun TasksMainPage(navController: NavHostController) {
                     .padding(16.dp)
             ) {
                 Button(
-                    onClick = { showDialog = true },
+                    onClick = { showDialogBox = true },
                     modifier = Modifier.padding(vertical = 16.dp)
                 ) {
                     Text(text = "New Task")
                 }
             }
+            if (completeDialogBox) {
+                CompletionDialog(
+                    taskName = completedTaskText,
+                    onYes = {
+                        val emailSubject = "Following task completed: $completedTaskText"
+                        val intent = Intent(Intent.ACTION_SENDTO)
+                        val resolvedActivity = intent.resolveActivity(context.packageManager)
+                        Log.d("ResolvedActivity", "Resolved Activity: $resolvedActivity")
+                        intent.data = Uri.parse("mailto:")
+                        intent.putExtra(Intent.EXTRA_SUBJECT, emailSubject)
+                        intent.putExtra(Intent.EXTRA_TEXT, "")
+                        intent.`package` = "com.microsoft.office.outlook"
 
+                        // Remove completed tasks
+                        tasks = tasks.filter { !it.completed.value }
+                        completeDialogBox = false // Dismiss the dialog
+                        if (resolvedActivity == null) {
+                            context.startActivity(intent)
+                        } else {
+                            Toast.makeText(context, "Microsoft Outlook is not installed.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onNo = {
+                        // Remove completed tasks
+                        tasks = tasks.filter { !it.completed.value }
+                        completeDialogBox = false // Dismiss the dialog
+                    },
+                    onCancel = {
+                        tasks.forEach { task ->
+                            if (task.completed.value) {
+                                task.completed.value = false
+                            }
+                        }
+                        completeDialogBox = false // Dismiss the dialog
+                    }
+                )
+            }
             TaskDialog(
-                showDialog = showDialog,
-                onDismiss = { showDialog = false},
+                showDialog = showDialogBox,
+                onDismiss = { showDialogBox = false},
                 onConfirm = { taskText ->
                     tasks = tasks + Task(taskText)
-                    showDialog = false
+                    showDialogBox = false
                 }
             )
         }
