@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.example.tasksapp.ui.theme.TasksAppTheme
 
 data class Task(val text: String, var completed: Boolean = false)
-private fun Button.setOnClickListener(onClick: () -> Unit, modifier: Modifier) {
+private fun Button.setOnClickListener(onClick: () -> Unit   , modifier: Modifier) {
 
 }
 
