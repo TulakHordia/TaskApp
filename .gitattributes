@@ -1,0 +1,14 @@
+# Set default behavior to auto-detect line endings
+* text=auto
+
+# Kotlin files
+*.kt linguist-language=Kotlin
+
+# Gradle files
+*.gradle text
+
+# Android Studio files
+*.iml text
+*.ipr text
+*.iws text
+.idea/* text
